@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Commande de Plats • PWA WhatsApp</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#22c55e" />
+  <meta name="description" content="App PWA pour prendre des commandes de plats et les envoyer sur WhatsApp." />
+  <link rel="icon" href="icon-192.png" type="image/png" />
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 0; background: #f9fafb; color: #111; }
+    header { background: #22c55e; color: white; text-align: center; padding: 1rem; }
+    main { padding: 1rem; max-width: 600px; margin: auto; }
+    h2 { color: #16a34a; }
+    button { background: #22c55e; color: white; border: none; padding: 10px 14px; border-radius: 6px; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    input, textarea, select { width: 100%; margin: 0.5rem 0; padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; }
+    .menu-item { display: flex; justify-content: space-between; margin: 0.5rem 0; }
+    .menu-item button { background: #16a34a; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🍽️ Commande de plats</h1>
+  </header>
+  <main>
+    <section>
+      <h2>Menu</h2>
+      <div id="menuList"></div>
+    </section>
+    <section>
+      <h2>Panier</h2>
+      <ul id="cartList"></ul>
+      <p><strong>Total:</strong> <span id="total">0</span> HTG</p>
+      <input id="name" placeholder="Nom du client" />
+      <input id="address" placeholder="Adresse / repère" />
+      <input id="clientPhone" placeholder="Téléphone client (WhatsApp)" />
+      <textarea id="note" placeholder="Note au chef (facultatif)"></textarea>
+      <input id="waNumber" placeholder="Votre n° WhatsApp (destinataire)" />
+      <button id="sendBtn" disabled>📲 Envoyer la commande sur WhatsApp</button>
+    </section>
+  </main>
+  <script>
+    const menu = [
+      {id:'griot', name:'Griot + bananes', price:450},
+      {id:'poulet', name:'Poulet braisé', price:500},
+      {id:'jus', name:'Jus naturel', price:200}
+    ];
+    const cart = {};
+    const menuDiv = document.getElementById('menuList');
+    const cartList = document.getElementById('cartList');
+    const totalEl = document.getElementById('total');
+    const sendBtn = document.getElementById('sendBtn');
+
+    menu.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'menu-item';
+      div.innerHTML = `<span>${item.name} - ${item.price} HTG</span>`;
+      const btn = document.createElement('button');
+      btn.textContent = '+';
+      btn.onclick = () => addItem(item);
+      div.appendChild(btn);
+      menuDiv.appendChild(div);
+    });
+
+    function addItem(item) {
+      if(!cart[item.id]) cart[item.id] = { ...item, qty: 0 };
+      cart[item.id].qty++;
+      renderCart();
+    }
+
+    function renderCart() {
+      cartList.innerHTML = '';
+      let total = 0;
+      Object.values(cart).forEach(({name,price,qty,id}) => {
+        const li = document.createElement('li');
+        li.textContent = `${name} × ${qty} — ${price * qty} HTG`;
+        cartList.appendChild(li);
+        total += price * qty;
+      });
+      totalEl.textContent = total;
+      sendBtn.disabled = total === 0;
+    }
+
+    function sendToWhatsApp(){
+      const name = document.getElementById('name').value.trim();
+      const address = document.getElementById('address').value.trim();
+      const note = document.getElementById('note').value.trim();
+      const clientPhone = document.getElementById('clientPhone').value.trim();
+      const waNumber = document.getElementById('waNumber').value.trim();
+      let msg = `🧾 *Nouvelle commande*\n`;
+      if(name) msg += `👤 Client: ${name}\n`;
+      if(address) msg += `📍 Adresse: ${address}\n`;
+      if(clientPhone) msg += `📞 ${clientPhone}\n`;
+      msg += `\n🍽️ *Détails*\n`;
+      Object.values(cart).forEach(({name,price,qty}) => {
+        msg += `• ${name} × ${qty} — ${price * qty} HTG\n`;
+      });
+      msg += `\nTotal: ${totalEl.textContent} HTG\n`;
+      if(note) msg += `📝 Note: ${note}`;
+      window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`);
+    }
+
+    sendBtn.onclick = sendToWhatsApp;
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js');
+      });
+    }
+  </script>
+</body>
+</html>
